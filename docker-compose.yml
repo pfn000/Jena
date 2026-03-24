@@ -1,0 +1,20 @@
+services:
+  openclaw:
+    image: ollama/ollama:latest
+    container_name: openclaw-kimi
+    ports:
+      - "11434:11434"          # ← Claw.html talks to this exact port
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    # Optional: give GPU access if you ever want it (uncomment below)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  ollama-data:
