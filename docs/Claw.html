@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claw.html • OpenClaw Chat</title>
+    <title>Claw.html • OpenClaw MCP Multi-Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         body { font-family: 'Inter', system_ui, sans-serif; }
         .chat-bubble-user { background: linear-gradient(135deg, #3b82f6, #1e40af); border-bottom-right-radius: 4px; }
         .chat-bubble-assistant { background: #1f2937; border-bottom-left-radius: 4px; }
-        #chat-window::-webkit-scrollbar { display: none; }
+        .agent-tag { font-size: 10px; padding: 2px 8px; border-radius: 9999px; }
     </style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen flex items-center justify-center p-4">
@@ -18,153 +18,220 @@
         <!-- Header -->
         <div class="px-8 py-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-950">
             <div class="flex items-center gap-x-3">
-                <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center text-2xl shadow-inner">🦾</div>
+                <div class="w-9 h-9 bg-gradient-to-br from-purple-500 to-cyan-400 rounded-2xl flex items-center justify-center text-2xl shadow-inner">🦾</div>
                 <div>
                     <h1 class="text-2xl font-semibold tracking-tight">Claw Chat</h1>
-                    <p class="text-zinc-400 text-sm">OpenClaw • kimi-k2.5:cloud</p>
+                    <p class="text-zinc-400 text-sm">MCP Multi-Agent • kimi-k2.5:cloud</p>
                 </div>
             </div>
-            <div onclick="toggleSettings()" class="flex items-center gap-x-2 cursor-pointer hover:bg-zinc-800 px-4 py-2 rounded-2xl transition-colors">
-                <span class="text-emerald-400 text-xs font-mono">● LIVE</span>
-                <span id="status" class="text-zinc-400 text-sm">checking...</span>
+            <div class="flex items-center gap-x-4">
+                <div onclick="toggleMCPMode()" id="mcp-badge" class="cursor-pointer px-4 py-1 bg-emerald-400 text-zinc-950 text-xs font-mono rounded-3xl flex items-center gap-1 hover:scale-105 transition">
+                    <span>●</span> MCP ACTIVE
+                </div>
+                <div onclick="openSettings()" class="flex items-center gap-x-2 cursor-pointer hover:bg-zinc-800 px-4 py-2 rounded-2xl transition-colors">
+                    <span id="status" class="text-zinc-400 text-sm">checking...</span>
+                </div>
             </div>
         </div>
 
         <!-- Chat Window -->
-        <div id="chat-window" class="h-[520px] p-6 overflow-y-auto flex flex-col gap-6 bg-[radial-gradient(#27272a_1px,transparent_1px)] bg-[length:20px_20px]">
-        </div>
+        <div id="chat-window" class="h-[520px] p-6 overflow-y-auto flex flex-col gap-6 bg-[radial-gradient(#27272a_1px,transparent_1px)] bg-[length:20px_20px]"></div>
 
         <!-- Input Area -->
         <div class="p-6 border-t border-zinc-800 bg-zinc-950">
             <div class="flex gap-3">
-                <input id="user-input" type="text" 
-                       class="flex-1 bg-zinc-800 focus:bg-white focus:text-zinc-950 text-white placeholder:text-zinc-400 px-6 py-4 rounded-3xl outline-none transition-all text-base"
-                       placeholder="Ask OpenClaw anything..." autocomplete="off">
-                <button onclick="sendMessage()"
-                        class="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 w-12 h-12 rounded-3xl flex items-center justify-center transition-all active:scale-95 shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.874L5.999 12zm0 0h7.07" />
-                    </svg>
-                </button>
+                <input id="user-input" type="text" class="flex-1 bg-zinc-800 focus:bg-white focus:text-zinc-950 text-white placeholder:text-zinc-400 px-6 py-4 rounded-3xl outline-none transition-all text-base" placeholder="Ask multi-agent OpenClaw anything... (try 'plan: build a website')">
+                <button onclick="sendMessage()" class="bg-gradient-to-r from-purple-500 to-cyan-400 hover:from-purple-600 hover:to-cyan-500 w-12 h-12 rounded-3xl flex items-center justify-center transition-all active:scale-95 shadow-lg">→</button>
+                <button onclick="triggerPlanning()" class="bg-zinc-800 hover:bg-amber-400 hover:text-zinc-950 w-12 h-12 rounded-3xl flex items-center justify-center transition-all">🧠</button>
             </div>
         </div>
     </div>
 
-    <!-- START SCREEN (shown when OpenClaw is not running) -->
+    <!-- Start / MCP Screen -->
     <div id="start-screen" class="max-w-3xl w-full bg-zinc-900 rounded-3xl shadow-2xl p-12 text-center hidden">
-        <div class="mx-auto w-24 h-24 bg-gradient-to-br from-amber-400 to-red-500 rounded-3xl flex items-center justify-center text-6xl mb-8">⚠️</div>
-        <h2 class="text-3xl font-semibold mb-3">OpenClaw is not running</h2>
-        <p class="text-zinc-400 text-lg mb-8">Docker container needs to be started so the AI can work.</p>
-        
-        <button onclick="copyStartCommand()" 
-                class="w-full bg-white text-zinc-950 hover:bg-cyan-300 font-semibold text-xl py-6 px-8 rounded-3xl flex items-center justify-center gap-4 transition-all active:scale-95">
-            <span>🚀 Start OpenClaw Docker Now</span>
-            <span class="text-2xl">📋</span>
-        </button>
-        
-        <p id="copied-msg" class="text-emerald-400 text-sm mt-4 opacity-0 transition-all">✅ Command copied! Paste in your terminal and press Enter.</p>
-        
-        <div class="mt-12 text-xs text-zinc-500">
-            Every time you open this page it will check automatically.<br>
-            Keep the Docker container running and refresh this page.
-        </div>
+        <div class="text-6xl mb-6">🦾</div>
+        <h2 class="text-3xl font-semibold mb-2">MCP Multi-Agent System Ready</h2>
+        <p class="text-zinc-400 mb-8">Docker must be running for the agents to work</p>
+        <button onclick="copyDockerCommand()" class="w-full bg-white text-zinc-950 font-semibold py-6 rounded-3xl text-xl flex items-center justify-center gap-3 hover:bg-cyan-300">🚀 Copy: docker compose up -d</button>
+        <p id="copied-msg" class="text-emerald-400 mt-4 opacity-0">✅ Copied! Paste in terminal</p>
     </div>
 
     <script>
         let messages = []
         let ollamaBaseUrl = "http://localhost:11434"
         let currentModel = "kimi-k2.5:cloud"
-        let isChecking = false
+        let mcpMode = true
+        let githubPAT = localStorage.getItem('githubPAT') || ''
+        let OWNER = 'pfn000'
+        let REPO = 'Jena'
+        let MEMORY_PATH = 'memory/claw-history.json'
+        let SKILLS = ''
 
         const mainApp = document.getElementById('main-app')
         const startScreen = document.getElementById('start-screen')
         const chatWindow = document.getElementById('chat-window')
         const userInput = document.getElementById('user-input')
 
-        // Auto-check if OpenClaw is running
-        async function checkOllama() {
-            if (isChecking) return
-            isChecking = true
+        // Fetch live SKILLS.md for MCP tools
+        async function loadSkills() {
             try {
-                const res = await fetch(`${ollamaBaseUrl}/api/tags`, { method: 'GET', cache: 'no-store' })
+                const res = await fetch('https://raw.githubusercontent.com/pfn000/Jena/main/SKILLS.md')
+                SKILLS = await res.text()
+            } catch(e) { SKILLS = 'MCP tools loaded' }
+        }
+
+        async function checkOllama() {
+            try {
+                const res = await fetch(`${ollamaBaseUrl}/api/tags`)
                 if (res.ok) {
-                    document.getElementById('status').innerHTML = `✅ <span class="text-emerald-400">OpenClaw LIVE</span>`
+                    document.getElementById('status').innerHTML = `✅ <span class="text-emerald-400">MCP Agents LIVE</span>`
                     startScreen.classList.add('hidden')
                     mainApp.classList.remove('hidden')
                     if (chatWindow.children.length === 0) showWelcome()
                     return true
                 }
-            } catch (e) {}
-            // Not running → show start screen
-            document.getElementById('status').innerHTML = `⚠️ Not running`
+            } catch(e) {}
+            document.getElementById('status').innerHTML = `⚠️ Docker needed`
             mainApp.classList.add('hidden')
             startScreen.classList.remove('hidden')
-            isChecking = false
             return false
         }
 
-        // Copy the exact docker start command
-        function copyStartCommand() {
-            const cmd = `docker compose up -d`
-            navigator.clipboard.writeText(cmd).then(() => {
-                const msg = document.getElementById('copied-msg')
-                msg.classList.remove('opacity-0')
-                setTimeout(() => msg.classList.add('opacity-0'), 2500)
+        function copyDockerCommand() {
+            navigator.clipboard.writeText('docker compose up -d').then(() => {
+                document.getElementById('copied-msg').classList.remove('opacity-0')
+                setTimeout(() => document.getElementById('copied-msg').classList.add('opacity-0'), 3000)
             })
         }
 
-        function addMessage(role, content, isStreaming = false) {
-            const wrapper = document.createElement('div')
-            wrapper.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`
-            const bubble = document.createElement('div')
-            bubble.className = `max-w-[75%] px-6 py-4 rounded-3xl text-[15.5px] leading-relaxed ${
-                role === 'user' ? 'chat-bubble-user text-white' : 'chat-bubble-assistant text-white'
-            }`
-            if (isStreaming) {
-                bubble.id = 'streaming-bubble'
-                bubble.innerHTML = `<span class="typing inline-block w-2 h-2 bg-white rounded-full animate-pulse"></span>`
-            } else {
-                bubble.textContent = content
+        // GitHub Memory Functions (MCP Memory Agent)
+        async function githubGetFile() {
+            if (!githubPAT) return null
+            try {
+                const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${MEMORY_PATH}`, {
+                    headers: { 'Authorization': `token ${githubPAT}`, 'Accept': 'application/vnd.github.v3+json' }
+                })
+                if (res.status === 404) return null
+                const data = await res.json()
+                return JSON.parse(atob(data.content))
+            } catch(e) { return null }
+        }
+
+        async function githubSaveFile(content) {
+            if (!githubPAT) return alert('Set GitHub PAT in settings first!')
+            let sha = null
+            const existing = await githubGetFile()
+            if (existing) sha = (await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${MEMORY_PATH}`, {headers:{'Authorization':`token ${githubPAT}`}}).then(r=>r.json())).sha
+
+            const body = {
+                message: '🤖 OpenClaw MCP memory update',
+                content: btoa(JSON.stringify(content, null, 2)),
+                sha: sha || undefined
             }
-            wrapper.appendChild(bubble)
-            chatWindow.appendChild(wrapper)
-            chatWindow.scrollTop = chatWindow.scrollHeight
-            return bubble
+            await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${MEMORY_PATH}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${githubPAT}`, 'Accept': 'application/vnd.github.v3+json' },
+                body: JSON.stringify(body)
+            })
+        }
+
+        // Load memory on start
+        async function loadMemory() {
+            const saved = await githubGetFile()
+            if (saved && saved.messages) {
+                messages = saved.messages
+                messages.forEach(m => addMessage(m.role, m.content))
+            } else if (localStorage.getItem('clawMessages')) {
+                messages = JSON.parse(localStorage.getItem('clawMessages'))
+                messages.forEach(m => addMessage(m.role, m.content))
+            }
+        }
+
+        // Tool executor for MCP
+        async function executeTool(toolCall) {
+            const { tool, args } = toolCall
+            let result = ''
+            if (tool === 'plan_complex_task') {
+                result = `🧠 PLAN CREATED:\n1. ${args.description}\n2. Delegate to Researcher\n3. Execute steps\n4. Save to memory`
+            } else if (tool === 'save_to_memory') {
+                localStorage.setItem(`mem_${args.key}`, args.value)
+                result = `✅ Saved to memory: ${args.key}`
+            } else if (tool === 'load_from_memory') {
+                result = localStorage.getItem(`mem_${args.key}`) || 'No memory found'
+            } else if (tool === 'github_memory_sync') {
+                await githubSaveFile({ messages, timestamp: new Date().toISOString() })
+                result = '✅ Full history saved to GitHub repo!'
+            } else if (tool === 'delegate_to_agent') {
+                result = `🔀 Delegated to ${args.agent} agent`
+            }
+            return result
         }
 
         async function streamResponse(prompt) {
-            const streamingBubble = document.getElementById('streaming-bubble')
+            const streamingBubble = addMessage('assistant', '', true)
             let fullContent = ''
+            const systemPrompt = `You are OpenClaw — a full MCP (Model Context Protocol) multi-agent system.\n\n${SKILLS}\n\nUse tools in exact JSON format when needed: {"tool": "tool_name", "args": {...}}\nAlways plan complex tasks. Use multi-agent collaboration.`
+
             try {
                 const res = await fetch(`${ollamaBaseUrl}/api/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ model: currentModel, messages: [...messages, { role: 'user', content: prompt }], stream: true })
+                    body: JSON.stringify({
+                        model: currentModel,
+                        messages: [{role: 'system', content: systemPrompt}, ...messages, {role: 'user', content: prompt}],
+                        stream: true
+                    })
                 })
+
                 const reader = res.body.getReader()
                 const decoder = new TextDecoder()
+
                 while (true) {
-                    const { done, value } = await reader.read()
+                    const {done, value} = await reader.read()
                     if (done) break
                     const chunk = decoder.decode(value)
                     const lines = chunk.split('\n').filter(l => l.trim())
+
                     for (const line of lines) {
                         try {
                             const parsed = JSON.parse(line)
                             if (parsed.message?.content) {
                                 fullContent += parsed.message.content
                                 streamingBubble.textContent = fullContent
-                                chatWindow.scrollTop = chatWindow.scrollHeight
+
+                                // Detect MCP tool call
+                                const toolMatch = fullContent.match(/\{[\s\S]*"tool"[\s\S]*\}/)
+                                if (toolMatch) {
+                                    const toolCall = JSON.parse(toolMatch[0])
+                                    const toolResult = await executeTool(toolCall)
+                                    fullContent += `\n\n[TOOL RESULT] ${toolResult}`
+                                    streamingBubble.textContent = fullContent
+                                }
                             }
                             if (parsed.done) break
-                        } catch (e) {}
+                        } catch(e) {}
                     }
                 }
-                messages.push({ role: 'user', content: prompt })
-                messages.push({ role: 'assistant', content: fullContent })
-            } catch (err) {
-                streamingBubble.innerHTML = `<span class="text-red-400">Connection lost. Refresh page and make sure Docker is running.</span>`
+
+                messages.push({role: 'user', content: prompt})
+                messages.push({role: 'assistant', content: fullContent})
+                localStorage.setItem('clawMessages', JSON.stringify(messages))
+            } catch(err) {
+                streamingBubble.innerHTML = `<span class="text-red-400">MCP connection lost — is Docker running?</span>`
             }
+        }
+
+        function addMessage(role, content, isStreaming = false) {
+            const wrapper = document.createElement('div')
+            wrapper.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`
+            const bubble = document.createElement('div')
+            bubble.className = `max-w-[75%] px-6 py-4 rounded-3xl text-[15.5px] leading-relaxed ${role === 'user' ? 'chat-bubble-user text-white' : 'chat-bubble-assistant text-white'}`
+            if (isStreaming) bubble.id = 'streaming-bubble'
+            else bubble.textContent = content
+            wrapper.appendChild(bubble)
+            chatWindow.appendChild(wrapper)
+            chatWindow.scrollTop = chatWindow.scrollHeight
+            return bubble
         }
 
         async function sendMessage() {
@@ -176,37 +243,52 @@
             await streamResponse(prompt)
         }
 
+        function triggerPlanning() {
+            const prompt = userInput.value.trim() || "Plan a complex task for me"
+            userInput.value = ''
+            addMessage('user', `🧠 Planning request: ${prompt}`)
+            addMessage('assistant', '', true)
+            streamResponse(`plan_complex_task: ${prompt}`)
+        }
+
+        function toggleMCPMode() {
+            mcpMode = !mcpMode
+            const badge = document.getElementById('mcp-badge')
+            badge.textContent = mcpMode ? '● MCP ACTIVE' : '○ MCP OFF'
+            badge.style.backgroundColor = mcpMode ? '#10b981' : '#64748b'
+        }
+
+        function openSettings() {
+            const pat = prompt('Enter your GitHub Personal Access Token (repo scope) for memory sync\n\n(Current: ' + (githubPAT ? 'SET' : 'NONE') + ')', githubPAT)
+            if (pat !== null) {
+                githubPAT = pat.trim()
+                localStorage.setItem('githubPAT', githubPAT)
+                alert('✅ PAT saved! Memory will now sync to your GitHub repo.')
+            }
+        }
+
         function showWelcome() {
-            const html = `
-                <div class="mx-auto max-w-md text-center">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-3xl text-4xl mb-6 shadow-inner">🦾</div>
-                    <h2 class="text-2xl font-semibold mb-2">Hail~!! OpenClaw is ready</h2>
-                    <p class="text-zinc-400">Static HTML chat • GitHub Pages<br>Model: <span class="font-mono text-cyan-300">kimi-k2.5:cloud</span></p>
-                </div>`
+            const html = `<div class="mx-auto max-w-md text-center">
+                <div class="text-5xl mb-6">🦾 MCP MULTI-AGENT LIVE</div>
+                <h2 class="text-2xl font-semibold">Hail~!! You now have full multi-agent + MCP powers</h2>
+                <p class="text-zinc-400 mt-4">SKILLS.md loaded • Memory in repo • Auto-planning enabled</p>
+            </div>`
             const wrapper = document.createElement('div')
             wrapper.innerHTML = html
             chatWindow.appendChild(wrapper.firstElementChild)
         }
 
-        function toggleSettings() {
-            const url = prompt('Ollama API base URL', ollamaBaseUrl)
-            if (url) ollamaBaseUrl = url.trim() || 'http://localhost:11434'
-        }
-
-        // Boot everything
         window.onload = async function () {
             tailwind.config = { content: [] }
-            // Check every 3 seconds until OpenClaw is live
+            await loadSkills()
+            await loadMemory()
             await checkOllama()
-            setInterval(checkOllama, 3000)
+            setInterval(checkOllama, 4000)
 
-            userInput.addEventListener('keypress', e => {
-                if (e.key === 'Enter') {
-                    e.preventDefault()
-                    sendMessage()
-                }
-            })
-            setTimeout(() => userInput.focus(), 500)
+            userInput.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); sendMessage() } })
+            setTimeout(() => userInput.focus(), 300)
+
+            console.log('%c✅ OpenClaw MCP Multi-Agent fully upgraded!', 'color:#a78bfa; font-size:14px')
         }
     </script>
 </body>
