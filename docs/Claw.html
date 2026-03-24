@@ -8,21 +8,13 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         body { font-family: 'Inter', system_ui, sans-serif; }
-        .chat-bubble-user { 
-            background: linear-gradient(135deg, #3b82f6, #1e40af);
-            border-bottom-right-radius: 4px;
-        }
-        .chat-bubble-assistant { 
-            background: #1f2937;
-            border-bottom-left-radius: 4px;
-        }
+        .chat-bubble-user { background: linear-gradient(135deg, #3b82f6, #1e40af); border-bottom-right-radius: 4px; }
+        .chat-bubble-assistant { background: #1f2937; border-bottom-left-radius: 4px; }
         #chat-window::-webkit-scrollbar { display: none; }
-        .typing { animation: pulse 1.5s infinite; }
     </style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-3xl w-full bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden border border-zinc-800">
-        
+    <div id="main-app" class="max-w-3xl w-full bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden border border-zinc-800 hidden">
         <!-- Header -->
         <div class="px-8 py-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-950">
             <div class="flex items-center gap-x-3">
@@ -34,69 +26,106 @@
             </div>
             <div onclick="toggleSettings()" class="flex items-center gap-x-2 cursor-pointer hover:bg-zinc-800 px-4 py-2 rounded-2xl transition-colors">
                 <span class="text-emerald-400 text-xs font-mono">● LIVE</span>
-                <span id="status" class="text-zinc-400 text-sm">ollama running</span>
+                <span id="status" class="text-zinc-400 text-sm">checking...</span>
             </div>
         </div>
 
         <!-- Chat Window -->
         <div id="chat-window" class="h-[520px] p-6 overflow-y-auto flex flex-col gap-6 bg-[radial-gradient(#27272a_1px,transparent_1px)] bg-[length:20px_20px]">
-            <!-- Welcome injected by JS -->
         </div>
 
         <!-- Input Area -->
         <div class="p-6 border-t border-zinc-800 bg-zinc-950">
             <div class="flex gap-3">
-                <input 
-                    id="user-input"
-                    type="text"
-                    class="flex-1 bg-zinc-800 focus:bg-white focus:text-zinc-950 text-white placeholder:text-zinc-400 px-6 py-4 rounded-3xl outline-none transition-all text-base"
-                    placeholder="Ask OpenClaw anything..."
-                    autocomplete="off">
-                <button 
-                    onclick="sendMessage()"
-                    class="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 w-12 h-12 rounded-3xl flex items-center justify-center transition-all active:scale-95 shadow-lg">
+                <input id="user-input" type="text" 
+                       class="flex-1 bg-zinc-800 focus:bg-white focus:text-zinc-950 text-white placeholder:text-zinc-400 px-6 py-4 rounded-3xl outline-none transition-all text-base"
+                       placeholder="Ask OpenClaw anything..." autocomplete="off">
+                <button onclick="sendMessage()"
+                        class="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 w-12 h-12 rounded-3xl flex items-center justify-center transition-all active:scale-95 shadow-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.874L5.999 12zm0 0h7.07" />
                     </svg>
                 </button>
             </div>
-            <div class="flex justify-between text-[10px] text-zinc-500 mt-3 px-2">
-                <div>Model: <span class="font-mono text-cyan-300">kimi-k2.5:cloud</span></div>
-                <div class="flex items-center gap-1">
-                    <span>API:</span>
-                    <span id="api-display" onclick="editApiUrl()" class="font-mono cursor-pointer hover:text-cyan-300">http://localhost:11434</span>
-                </div>
-                <div class="text-emerald-400">Static • /docs • GitHub Pages Ready</div>
-            </div>
+        </div>
+    </div>
+
+    <!-- START SCREEN (shown when OpenClaw is not running) -->
+    <div id="start-screen" class="max-w-3xl w-full bg-zinc-900 rounded-3xl shadow-2xl p-12 text-center hidden">
+        <div class="mx-auto w-24 h-24 bg-gradient-to-br from-amber-400 to-red-500 rounded-3xl flex items-center justify-center text-6xl mb-8">⚠️</div>
+        <h2 class="text-3xl font-semibold mb-3">OpenClaw is not running</h2>
+        <p class="text-zinc-400 text-lg mb-8">Docker container needs to be started so the AI can work.</p>
+        
+        <button onclick="copyStartCommand()" 
+                class="w-full bg-white text-zinc-950 hover:bg-cyan-300 font-semibold text-xl py-6 px-8 rounded-3xl flex items-center justify-center gap-4 transition-all active:scale-95">
+            <span>🚀 Start OpenClaw Docker Now</span>
+            <span class="text-2xl">📋</span>
+        </button>
+        
+        <p id="copied-msg" class="text-emerald-400 text-sm mt-4 opacity-0 transition-all">✅ Command copied! Paste in your terminal and press Enter.</p>
+        
+        <div class="mt-12 text-xs text-zinc-500">
+            Every time you open this page it will check automatically.<br>
+            Keep the Docker container running and refresh this page.
         </div>
     </div>
 
     <script>
         let messages = []
         let ollamaBaseUrl = "http://localhost:11434"
-        let currentModel = "kimi-k2.5:cloud"   // ← FIXED: real model name
+        let currentModel = "kimi-k2.5:cloud"
+        let isChecking = false
 
+        const mainApp = document.getElementById('main-app')
+        const startScreen = document.getElementById('start-screen')
         const chatWindow = document.getElementById('chat-window')
         const userInput = document.getElementById('user-input')
 
+        // Auto-check if OpenClaw is running
+        async function checkOllama() {
+            if (isChecking) return
+            isChecking = true
+            try {
+                const res = await fetch(`${ollamaBaseUrl}/api/tags`, { method: 'GET', cache: 'no-store' })
+                if (res.ok) {
+                    document.getElementById('status').innerHTML = `✅ <span class="text-emerald-400">OpenClaw LIVE</span>`
+                    startScreen.classList.add('hidden')
+                    mainApp.classList.remove('hidden')
+                    if (chatWindow.children.length === 0) showWelcome()
+                    return true
+                }
+            } catch (e) {}
+            // Not running → show start screen
+            document.getElementById('status').innerHTML = `⚠️ Not running`
+            mainApp.classList.add('hidden')
+            startScreen.classList.remove('hidden')
+            isChecking = false
+            return false
+        }
+
+        // Copy the exact docker start command
+        function copyStartCommand() {
+            const cmd = `docker compose up -d`
+            navigator.clipboard.writeText(cmd).then(() => {
+                const msg = document.getElementById('copied-msg')
+                msg.classList.remove('opacity-0')
+                setTimeout(() => msg.classList.add('opacity-0'), 2500)
+            })
+        }
+
         function addMessage(role, content, isStreaming = false) {
             const wrapper = document.createElement('div')
-            wrapper.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} group`
-
+            wrapper.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`
             const bubble = document.createElement('div')
             bubble.className = `max-w-[75%] px-6 py-4 rounded-3xl text-[15.5px] leading-relaxed ${
-                role === 'user' 
-                    ? 'chat-bubble-user text-white' 
-                    : 'chat-bubble-assistant text-white'
+                role === 'user' ? 'chat-bubble-user text-white' : 'chat-bubble-assistant text-white'
             }`
-            
             if (isStreaming) {
                 bubble.id = 'streaming-bubble'
                 bubble.innerHTML = `<span class="typing inline-block w-2 h-2 bg-white rounded-full animate-pulse"></span>`
             } else {
                 bubble.textContent = content
             }
-
             wrapper.appendChild(bubble)
             chatWindow.appendChild(wrapper)
             chatWindow.scrollTop = chatWindow.scrollHeight
@@ -106,30 +135,19 @@
         async function streamResponse(prompt) {
             const streamingBubble = document.getElementById('streaming-bubble')
             let fullContent = ''
-
             try {
                 const res = await fetch(`${ollamaBaseUrl}/api/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: currentModel,
-                        messages: [...messages, { role: 'user', content: prompt }],
-                        stream: true
-                    })
+                    body: JSON.stringify({ model: currentModel, messages: [...messages, { role: 'user', content: prompt }], stream: true })
                 })
-
-                if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
                 const reader = res.body.getReader()
                 const decoder = new TextDecoder()
-
                 while (true) {
                     const { done, value } = await reader.read()
                     if (done) break
-
                     const chunk = decoder.decode(value)
-                    const lines = chunk.split('\n').filter(line => line.trim() !== '')
-
+                    const lines = chunk.split('\n').filter(l => l.trim())
                     for (const line of lines) {
                         try {
                             const parsed = JSON.parse(line)
@@ -142,72 +160,53 @@
                         } catch (e) {}
                     }
                 }
-
                 messages.push({ role: 'user', content: prompt })
                 messages.push({ role: 'assistant', content: fullContent })
-                return fullContent
-
             } catch (err) {
-                console.error(err)
-                streamingBubble.innerHTML = `<span class="text-red-400 text-sm">⚠️ Cannot reach Ollama at ${ollamaBaseUrl}<br>Is Ollama + OpenClaw running?</span>`
-                streamingBubble.classList.add('!bg-red-950')
-                return null
+                streamingBubble.innerHTML = `<span class="text-red-400">Connection lost. Refresh page and make sure Docker is running.</span>`
             }
         }
 
         async function sendMessage() {
             const prompt = userInput.value.trim()
             if (!prompt) return
-
             addMessage('user', prompt)
             userInput.value = ''
-
             addMessage('assistant', '', true)
             await streamResponse(prompt)
         }
 
         function showWelcome() {
-            const welcomeHTML = `
+            const html = `
                 <div class="mx-auto max-w-md text-center">
                     <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-3xl text-4xl mb-6 shadow-inner">🦾</div>
-                    <h2 class="text-2xl font-semibold mb-2">Hail~!! OpenClaw is LIVE</h2>
-                    <p class="text-zinc-400">Static HTML chat • GitHub Pages<br>Model: <span class="font-mono text-cyan-300">kimi-k2.5:cloud</span> powered by OpenClaw</p>
-                    <div class="mt-8 text-xs text-zinc-500 flex items-center justify-center gap-2">
-                        <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                        Connected to localhost:11434
-                    </div>
+                    <h2 class="text-2xl font-semibold mb-2">Hail~!! OpenClaw is ready</h2>
+                    <p class="text-zinc-400">Static HTML chat • GitHub Pages<br>Model: <span class="font-mono text-cyan-300">kimi-k2.5:cloud</span></p>
                 </div>`
             const wrapper = document.createElement('div')
-            wrapper.innerHTML = welcomeHTML
+            wrapper.innerHTML = html
             chatWindow.appendChild(wrapper.firstElementChild)
         }
 
         function toggleSettings() {
             const url = prompt('Ollama API base URL', ollamaBaseUrl)
-            if (url !== null) {
-                ollamaBaseUrl = url.trim() || 'http://localhost:11434'
-                document.getElementById('api-display').textContent = ollamaBaseUrl
-            }
+            if (url) ollamaBaseUrl = url.trim() || 'http://localhost:11434'
         }
 
-        function editApiUrl() {
-            toggleSettings()
-        }
-
-        window.onload = function () {
+        // Boot everything
+        window.onload = async function () {
             tailwind.config = { content: [] }
-            showWelcome()
-            
+            // Check every 3 seconds until OpenClaw is live
+            await checkOllama()
+            setInterval(checkOllama, 3000)
+
             userInput.addEventListener('keypress', e => {
                 if (e.key === 'Enter') {
                     e.preventDefault()
                     sendMessage()
                 }
             })
-            
-            setTimeout(() => userInput.focus(), 300)
-            
-            console.log('%c✅ Claw.html updated + ready for OpenClaw!', 'color:#22d3ee; font-family:monospace; font-size:13px')
+            setTimeout(() => userInput.focus(), 500)
         }
     </script>
 </body>
