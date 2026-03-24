@@ -3,11 +3,13 @@ services:
     image: ollama/ollama:latest
     container_name: openclaw-kimi
     ports:
-      - "11434:11434"          # ← Claw.html talks to this exact port
+      - "11434:11434"          # Claw.html connects here
     volumes:
       - ollama-data:/root/.ollama
+      - ./entrypoint.sh:/entrypoint.sh:ro
+    command: sh /entrypoint.sh
     restart: unless-stopped
-    # Optional: give GPU access if you ever want it (uncomment below)
+    # Optional GPU (uncomment if you have NVIDIA + nvidia-container-toolkit)
     # deploy:
     #   resources:
     #     reservations:
